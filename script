@@ -1,0 +1,40 @@
+import fileinput
+import time
+import csv
+
+
+click = {}
+
+for line in fileinput.input('0602-click.csv'):  #read the click log
+	data=line.split(',')
+	udid=data[1].strip()  #read the device udid
+	adpn=data[0].strip()   #read the pacakge name of the ad clicked by the device
+	if udid not in click.keys(): #build the dictionary 
+		click[udid]={}
+	if adpn not in click[udid].keys():
+		click[udid][adpn]={}
+	click[udid][adpn]["appkeyid"]=data[2].strip()  #record the app key ID of the media integrated with ad network SDK
+	click[udid][adpn]["clickTime"]=int(time.mktime(time.strptime(data[3].strip(), "%m/%d/%Y %H:%M:%S")))  #record time stamp
+	click[udid][adpn]["click"]=1 #represent this is a click(optinal)
+	click[udid][adpn]["conversion"]=0   # to record if an ad is converted, i.e. installed 
+	click[udid][adpn]["afterClickinit"]=0  #to record if the device request the server after clicking, so that an updated app list would be uploaded.
+	
+for line in fileinput.input('0601-0603init.txt'):
+	data = line.split('\t')
+	if len(data)>=28:
+		pnlist=data[14].split(',')  #package name list, representing apps installed on certain mobile phone
+		udid=data[28].strip()  
+		if click.has_key(udid):
+			for m in click[udid].keys():
+				if data[3] > (click[udid][m]["clickTime"]+10):
+					click[udid][m]["afterClickinit"]=click[udid][m]["afterClickinit"]+1   #record how many times an device request the ad server after clicking
+			for pn in pnlist:
+				if click[udid].has_key(pn):
+						click[udid][pn]["conversion"]=click[udid][pn]["conversion"]+1  #record if there is a conversion
+
+
+#output
+w =csv.writer(open("result.csv","w"))
+for a in click.keys():
+	for b,c in click[a].items():
+		w.writerow([a,b,c])
